@@ -1,0 +1,13 @@
+COMMON:
+  DATA_PATH: data
+TRAIN:
+  TRAIN_DATA_PATH: train
+  BATCH_SIZE: 1
+  PRETRAIN: pretrain
+  CKPT: checkpoints
+  RESTORE: False
+  MAX_ITER: 50000
+  LEARNING_RATE: 0.00001
+  SOLVER: Adam
+  MOMENTUM: 0.9
+
