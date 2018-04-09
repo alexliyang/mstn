@@ -36,5 +36,10 @@ class TrainWrapper(object):
             while True:
                 try:
                     print(sess.run(next_element)[1])
+                    break
                 except tf.errors.OutOfRangeError:
                     break
+                except:
+                    # print(e)
+                    print('get batch error')
+                    continue

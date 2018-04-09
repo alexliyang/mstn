@@ -6,7 +6,7 @@ TRAIN:
   PRETRAIN: pretrain
   CKPT: checkpoints
   RESTORE: False
-  MAX_ITER: 50000
+  MAX_ITER: 500
   LEARNING_RATE: 0.00001
   SOLVER: Adam
   MOMENTUM: 0.9
