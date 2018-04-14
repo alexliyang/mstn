@@ -1,8 +1,11 @@
 import numpy as np
 import tensorflow as tf
 from lib import get_config
+from .py_func import corner_py
+import os
 
-cfg = get_config()
+proj_path = os.path.abspath(os.curdir)
+cfg = get_config(proj_path, 'configure.yml')
 
 DEFAULT_PADDING = 'SAME'
 
@@ -116,29 +119,59 @@ class BaseNetwork(object):
         feature_layer = d[name][1]
 
         (self.feed(deconv_layer)
-         .deconv(2, 2, 512, 1, 1)
-         .conv(3, 3, 512, 1, 1)
+         .deconv(2, 2, 512, 1, 1, name=name + '_deconv1')
+         .conv(3, 3, 512, 1, 1, name=name + '_conv1')
          .batch_normalize(name=name + '_deconv_output'))
 
         (self.feed(feature_layer)
-         .conv(3, 3, 512, 1, 1)
+         .conv(3, 3, 512, 1, 1, name=name + '_conv2')
          .batch_normalize().relu()
-         .conv(3, 3, 512, 1, 1)
+         .conv(3, 3, 512, 1, 1, name=name + 'conv3')
          .batch_normalize(name=name + '_feature'))
 
-        self.feed(name + '_deconv_output',name + '_feature')\
+        self.feed(name + '_deconv_output', name + '_feature') \
             .eltw_prod().relu(name=name)
+        # the deconv module output will be put in the [name]
 
-        return self.get_output(name)
+        # return self.get_output(name)
 
+    def corner_detect_layer(self, input, name=None):
+        """
+        input[0]: ground truth
+        input[1]: image info
+        """
+        with tf.variable_scope(name) as scope:
+            """
+            :return 0: corner label and its confidence
+                    1: offset target to regression
+            """
+            corner_pred_score, corner_pred_offset = tf.py_func(corner_py, [input[0], input[1]],
+                                                               [tf.float32, tf.float32])
 
-    def corner_detect(self):
-        pass
+            # TODO corner label shape w, h , k, q * 2
+            rpn_labels = tf.convert_to_tensor(tf.cast(corner_pred_score, tf.int32),
+                                              name='rpn_labels')  # shape is (1 x H x W x A, 2)
 
-
+    # TODO
     @layer
     def eltw_prod(self):
         pass
+
+    # TODO 输入是一幅特征图input: N , H, W, d_i, 全连接使得 使得网络输出 N , H, W, k, q, d_o
+    def deconv_fc(self, d_i, d_o, input, name=None,trainable=True):
+        with tf.variable_scope(name) as scope:
+            shape = tf.shape(input)
+            N, H, W, C = shape[0], shape[1], shape[2], shape[3]
+            input = tf.reshape(input, [N * H * W, C])
+
+            init_weights = tf.truncated_normal_initializer(0.0, stddev=0.01)
+            init_biases = tf.constant_initializer(0.0)
+            kernel = self.make_var('weights', [d_i, d_o], init_weights, trainable,
+                                   regularizer=self.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY))
+            biases = self.make_var('biases', [d_o], init_biases, trainable)
+
+            _O = tf.matmul(input, kernel) + biases
+            return tf.reshape(_O, [N, H, W, int(d_o)])
 
     # TODO batch norm
     @layer

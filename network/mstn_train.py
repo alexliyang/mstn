@@ -55,14 +55,15 @@ class mstn_train_net(base):
         # TODO 每个f层需要有自己的输出 用于打分和回归
 
         # TODO 前一个参数是deconv中的红色层，后一个是蓝色层
-        self.deconv_module(name='f10')
-        self.deconv_module(name='f9')
-        self.deconv_module(name='f8')
-        self.deconv_module(name='f7')
-        self.deconv_module(name='f4')
-        self.deconv_module(name='f3')
+        deconv_module_list = ['f10', 'f9', 'f8', 'f7', 'f4', 'f3']
+
+        for deconv_m in deconv_module_list:
+            self.deconv_module(name=deconv_m)
+            # TODO 特征图每个像素 输出k * q * 2个预测得分
+            self.feed(deconv_m).deconv_fc(2, name='corner_pred_score')
+
+            self.feed(deconv_m).deconv_fc(4, name='corner_pred_offset')
 
         # TODO 取出 f3 f4 f7 f8 f9 f10 f11
-
 
         # TODO 取出 f3 f4 f7 f8 f9 做segment sensitive map

@@ -19,3 +19,15 @@ run train 和 test的入口
 取消数据预处理阶段，直接读取数据并做处理，使用tensorflow data API构建，看多线程读取并预处理，每次取出一批数据进行处理。
 
 输入的数据要求把不规则的gt矩形框求出最小外接矩形
+
+### 数据下载
+进入项目根目录
+```
+python run/download.py
+```
+
+### 训练
+进入项目根目录
+```
+python run/train.py
+```

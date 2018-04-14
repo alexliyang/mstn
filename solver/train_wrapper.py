@@ -4,7 +4,7 @@ from lib import get_path
 
 
 class TrainWrapper(object):
-    def __init__(self, proj_path, cfg, network):
+    def __init__(self, proj_path, cfg, network = None):
         self._cfg = cfg
         self._root_path = proj_path
         self.net = network

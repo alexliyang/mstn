@@ -24,10 +24,10 @@ def make_TFconfig():
 if __name__ == '__main__':
     batch_producer = producer(proj_path, cfg)
 
-    train_net = get_network('train')
+    # train_net = get_network('train')
 
     with tf.Session(config=make_TFconfig()) as sess:
-        sw = TrainWrapper(proj_path, cfg, train_net)
-
+        # sw = TrainWrapper(proj_path, cfg, train_net)
+        sw = TrainWrapper(proj_path, cfg, )
         sw.train_model(sess=sess, producer=batch_producer.producer,
                        max_iters=cfg.TRAIN.MAX_ITER, restore=False)
