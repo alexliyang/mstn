@@ -57,13 +57,34 @@ class mstn_train_net(base):
         # TODO 前一个参数是deconv中的红色层，后一个是蓝色层
         deconv_module_list = ['f10', 'f9', 'f8', 'f7', 'f4', 'f3']
 
+        # TODO 每个feature map上的scale
+        f_scales = {
+            'f11': [184, 208, 232, 256],
+            'f10': [124, 136, 148, 160],
+            'f9': [88, 96, 104, 112],
+            'f8': [56, 64, 72, 80],
+            'f7': [36, 40, 44, 48],
+            'f4': [20, 24, 28, 32],
+            'f3': [4, 8, 6, 10, 12, 16],
+        }
+
         for deconv_m in deconv_module_list:
             self.deconv_module(name=deconv_m)
-            # TODO 特征图每个像素 输出k * q * 2个预测得分
-            self.feed(deconv_m).deconv_fc(2, name='corner_pred_score')
 
-            self.feed(deconv_m).deconv_fc(4, name='corner_pred_offset')
+            self.predict_module(name=deconv_m + '_pred')
+            # TODO 将预测层的N H W 1024 输出送入全连接层准备输出
 
-        # TODO 取出 f3 f4 f7 f8 f9 f10 f11
+            # TODO 特征图每个像素 输出k * q * 2个预测得分 deconv_fc 输出 N H W k * q * 2
+            # 第一个参数是特征图的channel数目
+            # 每个f层都需要输出预测目标
+            self.feed(deconv_m + '_pred').deconv_fc(512, 2, name=deconv_m + '_corner_pred_score')
+            # TODO 特征图每个像素 输出k * q * 4个预测目标 deconv_fc 输出 N H W k * q * 4
+            self.feed(deconv_m + '_pred').deconv_fc(512, 4, name=deconv_m + '_corner_pred_offset')
+
+            # TODO 需要计算出feat_stride 即在每个f层上一个像素点对应多少的步长
+            self.feed(deconv_m + '_corner_pred_score', 'corner_box','img_info') \
+                .corner_detect_layer(scales=f_scales[deconv_m],feat_stride=None, name=deconv_m + 'data',
+
+                                     )
 
         # TODO 取出 f3 f4 f7 f8 f9 做segment sensitive map

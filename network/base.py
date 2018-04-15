@@ -100,7 +100,22 @@ class BaseNetwork(object):
     def validate_padding(self, padding):
         assert padding in ('SAME', 'VALID')
 
-    # TODO deconv module in DSSD
+    """
+    name: f11_pred
+    """
+
+    def predict_module(self, name=None):
+        (self.feed(name)
+         .conv(1, 1, 256, name=name + '_conv1')
+         .conv(1, 1, 256, name=name + '_conv2')
+         .conv(1, 1, 1024, name=name + '_conv3'))
+
+        self.feed(name).conv(1, 1, 1024, name=name + '_conv4')
+
+        # return the element wise sum
+        return tf.add(self.get_output(name + '_conv3'), self.get_output(name + '_conv4'))
+
+    # TODO deconv module in DSSD name: f11 f10 f9 ...
     def deconv_module(self, name=None, module_num=None):
         """
         :param name: f10 f9...
@@ -135,18 +150,24 @@ class BaseNetwork(object):
 
         # return self.get_output(name)
 
-    def corner_detect_layer(self, input, name=None):
+    @layer
+    def corner_detect_layer(self, input, scales=None, name=None, feat_stride=None, img_info=None):
+        assert scales and name and feat_stride, 'corner detect layer lack some augment'
         """
         input[0]: ground truth
         input[1]: image info
         """
         with tf.variable_scope(name) as scope:
             """
-            :return 0: corner label and its confidence
-                    1: offset target to regression
+            :return 0: corner label and its confidence corner_pred_score
+                    1: offset target to regression corner_pred_offset
+                    2: scales
+                    3: feat stride
+                    4: img_info 
             """
-            corner_pred_score, corner_pred_offset = tf.py_func(corner_py, [input[0], input[1]],
-                                                               [tf.float32, tf.float32])
+            corner_pred_score, corner_pred_offset = \
+                tf.py_func(corner_py, [input[0], input[1], scales, feat_stride,input[2]],
+                           [tf.float32, tf.float32])
 
             # TODO corner label shape w, h , k, q * 2
             rpn_labels = tf.convert_to_tensor(tf.cast(corner_pred_score, tf.int32),
@@ -158,7 +179,7 @@ class BaseNetwork(object):
         pass
 
     # TODO 输入是一幅特征图input: N , H, W, d_i, 全连接使得 使得网络输出 N , H, W, k, q, d_o
-    def deconv_fc(self, d_i, d_o, input, name=None,trainable=True):
+    def deconv_fc(self, d_i, d_o, input, name=None, trainable=True):
         with tf.variable_scope(name) as scope:
             shape = tf.shape(input)
             N, H, W, C = shape[0], shape[1], shape[2], shape[3]
