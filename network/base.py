@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 from lib import get_config
 from network.py_func import corner_py
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.training import moving_averages
 import os
 
 proj_path = os.path.abspath(os.curdir)
@@ -32,6 +34,27 @@ def layer(op):
         return self
 
     return layer_decorated
+
+def _get_variable(name,
+                  shape,
+                  initializer,
+                  weight_decay=0.0,
+                  dtype='float',
+                  trainable=True):
+    "A little wrapper around tf.get_variable to do weight decay and add to"
+    "resnet collection"
+    if weight_decay > 0:
+        regularizer = tf.contrib.layers.l2_regularizer(weight_decay)
+    else:
+        regularizer = None
+    collections = [tf.GraphKeys.VARIABLES, cfg.COMMON.RESNET_VARIABLES]
+    return tf.get_variable(name,
+                           shape=shape,
+                           initializer=initializer,
+                           dtype=dtype,
+                           regularizer=regularizer,
+                           collections=collections,
+                           trainable=trainable)
 
 
 class BaseNetwork(object):
@@ -139,16 +162,13 @@ class BaseNetwork(object):
          .batch_normalize(name=name + '_deconv_output'))
 
         (self.feed(feature_layer)
-         .conv(3, 3, 512, 1, 1, name=name + '_conv2')
+         .conv(3, 3, 1024, 1, 1, name=name + '_conv2')
          .batch_normalize().relu()
-         .conv(3, 3, 512, 1, 1, name=name + 'conv3')
+         .conv(3, 3, 1024, 1, 1, name=name + 'conv3')
          .batch_normalize(name=name + '_feature'))
 
-        self.feed(name + '_deconv_output', name + '_feature') \
-            .eltw_prod().relu(name=name)
-        # the deconv module output will be put in the [name]
+        return tf.multiply(name + '_deconv_output', name + '_feature').relu(name=name)
 
-        # return self.get_output(name)
 
     @layer
     def corner_detect_layer(self, input, scales=None, name=None, feat_stride=None, img_info=None):
@@ -174,10 +194,7 @@ class BaseNetwork(object):
             rpn_labels = tf.convert_to_tensor(tf.cast(corner_pred_score, tf.int32),
                                               name='rpn_labels')  # shape is (1 x H x W x A, 2)
 
-    # TODO
-    @layer
-    def eltw_prod(self):
-        pass
+
 
     # TODO 输入是一幅特征图input: N , H, W, d_i, 全连接使得 使得网络输出 N , H, W, k, q, d_o
     def deconv_fc(self, d_i, d_o, input, name=None, trainable=True):
@@ -197,57 +214,50 @@ class BaseNetwork(object):
 
     # TODO batch norm
     @layer
-    def batch_normalize(self):
-        """
-            x_shape = x.get_shape()
-    params_shape = x_shape[-1:]
+    def batch_normalize(self, input):
+        input_shape = input.get_shape()
+        axis = list(range(len(input_shape)-1))
+        params_shape = input_shape[-1:]
 
-    if c['use_bias']:
-        bias = _get_variable('bias', params_shape,
+        if cfg.COMMON.USE_BIAS:
+            bias = _get_variable('bias', params_shape,
+                                 initializer=tf.zeros_initializer)
+            return input + bias
+        is_training = tf.convert_to_tensor(self.trainable, dtype='bool', name='is_training')
+
+        # beta， gamma shape 和mean相同， 这两个参数需要训练
+        beta = _get_variable('beta',
+                             params_shape,
                              initializer=tf.zeros_initializer)
-        return x + bias
+        gamma = _get_variable('gamma',
+                              params_shape,
+                              initializer=tf.ones_initializer)
 
-
-    axis = list(range(len(x_shape) - 1))
-
-    beta = _get_variable('beta',
-                         params_shape,
-                         initializer=tf.zeros_initializer)
-    gamma = _get_variable('gamma',
-                          params_shape,
-                          initializer=tf.ones_initializer)
-
-    moving_mean = _get_variable('moving_mean',
-                                params_shape,
-                                initializer=tf.zeros_initializer,
-                                trainable=False)
-    moving_variance = _get_variable('moving_variance',
+        moving_mean = _get_variable('moving_mean',
                                     params_shape,
-                                    initializer=tf.ones_initializer,
+                                    initializer=tf.zeros_initializer,
                                     trainable=False)
+        moving_variance = _get_variable('moving_variance',
+                                        params_shape,
+                                        initializer=tf.ones_initializer,
+                                        trainable=False)
+        # 求每个kernels上所有图片均值和方差
+        mean, variance = tf.nn.moments(input, axis)
 
-    # These ops will only be preformed when training.
-    mean, variance = tf.nn.moments(x, axis)
-    update_moving_mean = moving_averages.assign_moving_average(moving_mean,
-                                                               mean, BN_DECAY)
-    update_moving_variance = moving_averages.assign_moving_average(
-        moving_variance, variance, BN_DECAY)
-    tf.add_to_collection(UPDATE_OPS_COLLECTION, update_moving_mean)
-    tf.add_to_collection(UPDATE_OPS_COLLECTION, update_moving_variance)
+        # 滑动平均，滑动方差
+        update_moving_mean = moving_averages.assign_moving_average(moving_mean,
+                                                                   mean, cfg.COMMON.BN_DECAY)
+        update_moving_variance = moving_averages.assign_moving_average(
+            moving_variance, variance, cfg.COMMON.BN_DECAY)
+        tf.add_to_collection(cfg.COMMON.UPDATE_OPS_COLLECTION, update_moving_mean)
+        tf.add_to_collection(cfg.COMMON.UPDATE_OPS_COLLECTION, update_moving_variance)
 
-    mean, variance = control_flow_ops.cond(
-        c['is_training'], lambda: (mean, variance),
-        lambda: (moving_mean, moving_variance))
+        mean, variance = control_flow_ops.cond(
+            is_training, lambda: (mean, variance),
+            lambda: (moving_mean, moving_variance))
 
-    x = tf.nn.batch_normalization(x, mean, variance, beta, gamma, BN_EPSILON)
-    #x.set_shape(inputs.get_shape()) ??
-
-    return x
-
-
-        :return:
-        """
-        pass
+        output = tf.nn.batch_normalization(input, mean, variance, beta, gamma, cfg.COMMON.BN_EPSILON)
+        return output
 
     # TODO deconv layer uncomplete
     @layer
