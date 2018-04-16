@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
-from .preprocess import parse_function
-from .preprocess import opencv_read
+# from .preprocess import parse_function
+from .preprocess import opencv_handle
 
 
 class producer(object):
@@ -26,10 +26,11 @@ class producer(object):
         assert img_list.shape[0] == gt_list.shape[0], 'Image and ground truth mismatch'
 
         dataset = tf.data.Dataset.from_tensor_slices((img_list, gt_list))
-        # dataset = dataset.map(
-        #     lambda filename, label: tuple(tf.py_func(
-        #         opencv_read, [filename, label], [tf.uint8, label.dtype])))
-        dataset = dataset.map(parse_function).repeat(50).batch(cfg.TRAIN.BATCH_SIZE)
+        dataset = dataset.map(
+            lambda filename, label: tuple(tf.py_func(
+                opencv_handle, [filename, label], [tf.uint8, tf.float32, tf.uint8, tf.float32]))).repeat().batch(
+            cfg.TRAIN.BATCH_SIZE)
+        # dataset = dataset.map(parse_function).repeat().batch(cfg.TRAIN.BATCH_SIZE)
         self._producer = dataset
 
     @property

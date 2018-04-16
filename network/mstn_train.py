@@ -74,15 +74,16 @@ class mstn_train_net(base):
             self.predict_module(name=deconv_m + '_pred')
             # TODO 将预测层的N H W 1024 输出送入全连接层准备输出
 
-            # TODO 特征图每个像素 输出k * q * 2个预测得分 deconv_fc 输出 N H W k * q * 2
             # 第一个参数是特征图的channel数目
             # 每个f层都需要输出预测目标
-            self.feed(deconv_m + '_pred').deconv_fc(512, 2, name=deconv_m + '_corner_pred_score')
-            # TODO 特征图每个像素 输出k * q * 4个预测目标 deconv_fc 输出 N H W k * q * 4
+
+            # TODO 特征图每个像素 输出k * q * 2个预测得分 deconv_fc 输出 (N,H,W,k * q * 2)
+            self.feed(deconv_m + '_pred').deconv_fc(512, 1, name=deconv_m + '_corner_pred_score')
+            # TODO 特征图每个像素 输出k * q * 4个预测目标 deconv_fc 输出 (N,H,W,k * q * 4)
             self.feed(deconv_m + '_pred').deconv_fc(512, 4, name=deconv_m + '_corner_pred_offset')
 
             # TODO 需要计算出feat_stride 即在每个f层上一个像素点对应多少的步长
-            self.feed(deconv_m + '_corner_pred_score', 'corner_box','img_info') \
+            self.feed(deconv_m + '_corner_pred_score', 'corner_box','img_info','gt_default_box') \
                 .corner_detect_layer(scales=f_scales[deconv_m],feat_stride=None, name=deconv_m + 'data',
 
                                      )

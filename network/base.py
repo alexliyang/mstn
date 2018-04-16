@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from lib import get_config
-from .py_func import corner_py
+from network.py_func import corner_py
 import os
 
 proj_path = os.path.abspath(os.curdir)
@@ -159,14 +159,15 @@ class BaseNetwork(object):
         """
         with tf.variable_scope(name) as scope:
             """
-            :return 0: corner label and its confidence corner_pred_score
+            :params 0: corner label and its confidence corner_pred_score
                     1: offset target to regression corner_pred_offset
-                    2: scales
-                    3: feat stride
-                    4: img_info 
+                    2: gt_default_box
+                    3: scales
+                    4: feat stride
+                    5: img_info 
             """
             corner_pred_score, corner_pred_offset = \
-                tf.py_func(corner_py, [input[0], input[1], scales, feat_stride,input[2]],
+                tf.py_func(corner_py, [input[0], input[1],input[3], scales, feat_stride, input[2]],
                            [tf.float32, tf.float32])
 
             # TODO corner label shape w, h , k, q * 2

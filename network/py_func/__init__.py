@@ -1,1 +1,1 @@
-from .corner_py_func import corner_py
+from network.py_func import corner_py

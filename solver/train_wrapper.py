@@ -32,14 +32,19 @@ class TrainWrapper(object):
         iterator = producer.make_one_shot_iterator()
         next_element = iterator.get_next()
 
-        for _ in range(max_iters):
+        for _ in range(1):
             while True:
                 try:
-                    print(sess.run(next_element)[1])
+
+                    img, corner_data, img_info, reize_info = sess.run(next_element)
+                    print(img.shape)
+                    print(corner_data.shape)
+                    print(img_info)
+                    print(reize_info)
                     break
                 except tf.errors.OutOfRangeError:
                     break
                 except:
                     # print(e)
                     print('get batch error')
-                    continue
+                    break
