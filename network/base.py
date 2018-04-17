@@ -35,27 +35,6 @@ def layer(op):
 
     return layer_decorated
 
-def _get_variable(name,
-                  shape,
-                  initializer,
-                  weight_decay=0.0,
-                  dtype='float',
-                  trainable=True):
-    "A little wrapper around tf.get_variable to do weight decay and add to"
-    "resnet collection"
-    if weight_decay > 0:
-        regularizer = tf.contrib.layers.l2_regularizer(weight_decay)
-    else:
-        regularizer = None
-    collections = [tf.GraphKeys.VARIABLES, cfg.COMMON.RESNET_VARIABLES]
-    return tf.get_variable(name,
-                           shape=shape,
-                           initializer=initializer,
-                           dtype=dtype,
-                           regularizer=regularizer,
-                           collections=collections,
-                           trainable=trainable)
-
 
 class BaseNetwork(object):
     def __init__(self, inputs, trainable=True):
