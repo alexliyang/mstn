@@ -16,6 +16,8 @@ RESIZE_Y = 512
 
 def opencv_handle(image_path, gt_path):
     image = cv2.imread(image_path.decode())
+    # img_reized = image
+    # print(image_path.decode())
     img_reized = cv2.resize(image, (RESIZE_X, RESIZE_X), interpolation=cv2.INTER_CUBIC)
     img_info = np.array(img_reized.shape, dtype=np.int32)
 
@@ -25,8 +27,13 @@ def opencv_handle(image_path, gt_path):
     # print(resize_info)
     # print(img_info)
     # convert the gt_text to corner data and segmentation mask
-    corner_data = gt_text_handler(gt_path.decode(), img_info, resize_info)
-    return img_reized, corner_data, img_info, resize_info
+    corner_data, segmentation_mask = gt_text_handler(gt_path.decode(), img_info, resize_info)
+    return img_reized, corner_data, img_info, resize_info, segmentation_mask
+
+
+"""
+
+"""
 
 
 def gt_text_handler(path, img_info, resize_info):
@@ -67,7 +74,7 @@ def gt_text_handler(path, img_info, resize_info):
        3：左下角点框
     """
 
-    segmentation_mask = np.zeros((4, img_info[0], img_info[1]))
+    segmentation_mask = np.zeros((4, img_info[0], img_info[1]),dtype=np.int32)
 
     split_points = split_bin(corner_data[:, :, :2])
 
@@ -79,7 +86,6 @@ def gt_text_handler(path, img_info, resize_info):
 
     # 对mask 的每层所对应的segment bin区域进行赋值1
 
-
     # TODO 按照说明使用cv2.fillPoly(segmentation_mask[i], split_points[:, position_grid[i], :], 1)
     # TODO 失败了，不知道是什么原因，只能先暂时使用两个for 循环
     for j in range(len(split_points)):
@@ -88,7 +94,7 @@ def gt_text_handler(path, img_info, resize_info):
             cv2.fillPoly(segmentation_mask[i], [split_points[j, position_grid[i], :]], 1)
 
     # 将 (num_gt,4,4) 重新排列成 (4, num_gt,4)
-    return corner_data.transpose((1, 0, 2))
+    return corner_data.transpose((1, 0, 2)), segmentation_mask
 
 
 def split_bin(rects):
