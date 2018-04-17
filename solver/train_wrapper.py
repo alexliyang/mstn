@@ -1,6 +1,7 @@
 import tensorflow as tf
 import os
 from lib import get_path
+from lib import Timer
 
 
 class TrainWrapper(object):
@@ -32,19 +33,25 @@ class TrainWrapper(object):
         iterator = producer.make_one_shot_iterator()
         next_element = iterator.get_next()
 
-        for _ in range(1):
+        timer = Timer()
+
+        wrong = 0
+        for _ in range(10000):
             while True:
                 try:
-
+                    timer.tic()
                     img, corner_data, img_info, reize_info = sess.run(next_element)
-                    print(img.shape)
-                    print(corner_data.shape)
-                    print(img_info)
-                    print(reize_info)
+                    # print(img.shape)
+                    # print(corner_data.shape)
+                    # print(img_info)
+                    # print(reize_info)
+                    print(timer.toc())
                     break
                 except tf.errors.OutOfRangeError:
                     break
                 except:
                     # print(e)
+                    wrong += 1
                     print('get batch error')
                     break
+        print(wrong)

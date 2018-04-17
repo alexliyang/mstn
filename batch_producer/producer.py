@@ -28,7 +28,7 @@ class producer(object):
         dataset = tf.data.Dataset.from_tensor_slices((img_list, gt_list))
         dataset = dataset.map(
             lambda filename, label: tuple(tf.py_func(
-                opencv_handle, [filename, label], [tf.uint8, tf.float32, tf.uint8, tf.float32]))).repeat().batch(
+                opencv_handle, [filename, label], [tf.uint8, tf.int32, tf.int32, tf.float32])), num_parallel_calls=100).repeat().batch(
             cfg.TRAIN.BATCH_SIZE)
         # dataset = dataset.map(parse_function).repeat().batch(cfg.TRAIN.BATCH_SIZE)
         self._producer = dataset
