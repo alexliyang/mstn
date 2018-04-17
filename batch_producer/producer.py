@@ -29,7 +29,7 @@ class producer(object):
         dataset = dataset.map(
             lambda img_path, gt_path: tuple(tf.py_func(
                 opencv_handle, [img_path, gt_path], [tf.uint8, tf.int32, tf.int32, tf.float32, tf.int32])),
-            num_parallel_calls=1).repeat().batch(
+            num_parallel_calls=100).repeat().batch(
             cfg.TRAIN.BATCH_SIZE)
         # dataset = dataset.map(parse_function).repeat().batch(cfg.TRAIN.BATCH_SIZE)
         self._producer = dataset

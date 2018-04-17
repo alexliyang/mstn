@@ -36,15 +36,16 @@ class TrainWrapper(object):
         timer = Timer()
 
         wrong = 0
-        for _ in range(10):
+        for _ in range(1):
             while True:
                 try:
                     timer.tic()
-                    img, corner_data, img_info, reize_info,segmentation_mask = sess.run(next_element)
+                    img, corner_data, img_info, reize_info, segmentation_mask = sess.run(next_element)
                     # print(img.shape)
                     # print(corner_data.shape)
                     # print(img_info)
                     # print(reize_info)
+                    print(corner_data)
                     print(timer.toc())
                     break
                 except tf.errors.OutOfRangeError:
