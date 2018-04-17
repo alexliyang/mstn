@@ -1,5 +1,6 @@
 COMMON:
   DATA_PATH: data
+  TRAINING: True # 训练是True,test改为False
 TRAIN:
   TRAIN_DATA_PATH: train
   BATCH_SIZE: 1

@@ -24,7 +24,7 @@ def make_TFconfig():
 if __name__ == '__main__':
     batch_producer = producer(proj_path, cfg)
 
-    # train_net = get_network('train')
+    train_net = get_network('train')
 
     with tf.Session(config=make_TFconfig()) as sess:
         # sw = TrainWrapper(proj_path, cfg, train_net)
