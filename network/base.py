@@ -167,7 +167,7 @@ class BaseNetwork(object):
          .conv(3, 3, 1024, 1, 1, name=name + 'conv3')
          .batch_normalize(name=name + '_feature'))
 
-        return tf.multiply(name + '_deconv_output', name + '_feature').relu(name=name)
+        return tf.multiply(self.get_output(name + '_deconv_output'), self.get_output(name + '_feature')).relu(name=name)
 
 
     @layer
@@ -212,52 +212,11 @@ class BaseNetwork(object):
             _O = tf.matmul(input, kernel) + biases
             return tf.reshape(_O, [N, H, W, int(d_o)])
 
-    # TODO batch norm
     @layer
     def batch_normalize(self, input):
-        input_shape = input.get_shape()
-        axis = list(range(len(input_shape)-1))
-        params_shape = input_shape[-1:]
+        axis = -1
+        return tf.layer.batch_normalization(input, axis=axis, training=cfg.COMMON.TRAINING)
 
-        if cfg.COMMON.USE_BIAS:
-            bias = _get_variable('bias', params_shape,
-                                 initializer=tf.zeros_initializer)
-            return input + bias
-        is_training = tf.convert_to_tensor(self.trainable, dtype='bool', name='is_training')
-
-        # beta， gamma shape 和mean相同， 这两个参数需要训练
-        beta = _get_variable('beta',
-                             params_shape,
-                             initializer=tf.zeros_initializer)
-        gamma = _get_variable('gamma',
-                              params_shape,
-                              initializer=tf.ones_initializer)
-
-        moving_mean = _get_variable('moving_mean',
-                                    params_shape,
-                                    initializer=tf.zeros_initializer,
-                                    trainable=False)
-        moving_variance = _get_variable('moving_variance',
-                                        params_shape,
-                                        initializer=tf.ones_initializer,
-                                        trainable=False)
-        # 求每个kernels上所有图片均值和方差
-        mean, variance = tf.nn.moments(input, axis)
-
-        # 滑动平均，滑动方差
-        update_moving_mean = moving_averages.assign_moving_average(moving_mean,
-                                                                   mean, cfg.COMMON.BN_DECAY)
-        update_moving_variance = moving_averages.assign_moving_average(
-            moving_variance, variance, cfg.COMMON.BN_DECAY)
-        tf.add_to_collection(cfg.COMMON.UPDATE_OPS_COLLECTION, update_moving_mean)
-        tf.add_to_collection(cfg.COMMON.UPDATE_OPS_COLLECTION, update_moving_variance)
-
-        mean, variance = control_flow_ops.cond(
-            is_training, lambda: (mean, variance),
-            lambda: (moving_mean, moving_variance))
-
-        output = tf.nn.batch_normalization(input, mean, variance, beta, gamma, cfg.COMMON.BN_EPSILON)
-        return output
 
     # TODO deconv layer uncomplete
     @layer

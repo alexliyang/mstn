@@ -1,5 +1,6 @@
 COMMON:
   DATA_PATH: data
+  TRAINING: True # 训练是True,test改为False
 TRAIN:
   TRAIN_DATA_PATH: train
   BATCH_SIZE: 1
@@ -10,8 +11,4 @@ TRAIN:
   LEARNING_RATE: 0.00001
   SOLVER: Adam
   MOMENTUM: 0.9
-  UPDATE_OPS_COLLECTION: bn_updata_ops
-  RESNET_VARIABLES: bn_variables
-  BN_EPSILON: 0.001
-  BN_DECAY: MOVING_AVERAGE_DECAY
-  USE_BIAS: use_bias
+
