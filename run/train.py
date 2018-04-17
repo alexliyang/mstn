@@ -1,6 +1,7 @@
 import os
 import sys
 import tensorflow as tf
+import pprint
 
 sys.path.append(os.getcwd())
 
@@ -11,7 +12,7 @@ from network import get_network
 
 proj_path = os.path.abspath(os.curdir)
 cfg = get_config(proj_path, 'configure.yml')
-
+pprint.pprint(cfg)
 
 def make_TFconfig():
     TFconfig = tf.ConfigProto(allow_soft_placement=True)

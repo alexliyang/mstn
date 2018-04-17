@@ -45,7 +45,7 @@ class TrainWrapper(object):
                     # print(corner_data.shape)
                     # print(img_info)
                     # print(reize_info)
-                    print(corner_data)
+                    # print(corner_data)
                     print(timer.toc())
                     break
                 except tf.errors.OutOfRangeError:

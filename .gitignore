@@ -1,4 +1,7 @@
 .idea
 data
 *.pyc
+*.c
+*.so
+*.o
 checkpoints
