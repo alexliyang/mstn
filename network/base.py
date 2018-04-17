@@ -150,6 +150,7 @@ class BaseNetwork(object):
             .relu(name=name)
 
 
+
     @layer
     def corner_detect_layer(self, input, scales=None, name=None, feat_stride=None, img_info=None):
         assert scales and name and feat_stride, 'corner detect layer lack some augment'
@@ -196,6 +197,7 @@ class BaseNetwork(object):
     def batch_normalize(self, input, training=True):
         axis = -1
         return tf.layer.batch_normalization(input, axis=axis, training=training)
+
 
 
     # TODO deconv layer uncomplete
