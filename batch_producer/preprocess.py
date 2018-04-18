@@ -4,14 +4,20 @@ import functools
 import numpy as np
 import math
 from .clockwise import clockwise
+import os
+
+from lib import get_config
+
+proj_path = os.path.abspath(os.curdir)
+cfg = get_config(proj_path, 'configure.yml')
 
 # Use a custom OpenCV function to read the image
 
 # TODO 求出每个gt的最小外接矩形 ，cv2.minAreaRect(cnt)
 # TODO
 
-RESIZE_X = 512
-RESIZE_Y = 512
+RESIZE_X = cfg.COMMON.RESIZE_WIDTH
+RESIZE_Y = cfg.COMMON.RESIZE_HEIGHT
 
 
 def opencv_handle(image_path, gt_path):
@@ -74,7 +80,7 @@ def gt_text_handler(path, img_info, resize_info):
        3：左下角点框
     """
 
-    segmentation_mask = np.zeros((4, img_info[0], img_info[1]),dtype=np.int32)
+    segmentation_mask = np.zeros((4, img_info[0], img_info[1]), dtype=np.int32)
 
     split_points = split_bin(corner_data[:, :, :2])
 

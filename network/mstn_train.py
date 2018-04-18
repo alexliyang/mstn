@@ -1,13 +1,34 @@
 from .base import BaseNetwork as base
-
+import tensorflow as tf
 
 class mstn_train_net(base):
-    def __int__(self):
-        pass
+    def __init__(self,cfg, trainable=True):
+        self.inputs = []
+        self._cfg = cfg
+
+
+        self.img = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img')
+        self.corner_data = tf.placeholder(tf.float32, shape=[None, None, None, 4], name='corner_data')
+        self.img_info = tf.placeholder(tf.float32, shape=[None, None], name='img_info')
+        self.resize_info = tf.placeholder(tf.float32, shape=[None, None], name='resize_info')
+        self.segmentation_mask = tf.placeholder(tf.float32, shape=[None, None, self._cfg.COMMON.RESIZE_HEIGHT,
+                                                                   self._cfg.COMMON.RESIZE_WIDTH],
+                                                name='segmentation_mask')
+
+        self.layers = dict({
+            'img': self.img,
+            'corner_data': self.corner_data,
+            'img_info': self.img_info,
+            'resize_info': self.resize_info,
+            'segmentation_mask': self.segmentation_mask
+        })
+        self.trainable = trainable
+        self.setup()
+
 
     def setup(self):
         # 详细查询vgg16的参数
-        (self.feed('data')
+        (self.feed('img')
          .conv(3, 3, 64, 1, 1, name='conv1_1')
          .conv(3, 3, 64, 1, 1, name='conv1_2')
          .max_pool(2, 2, 2, 2, padding='VALID', name='pool1')
@@ -83,8 +104,8 @@ class mstn_train_net(base):
             self.feed(deconv_m + '_pred').deconv_fc(512, 4, name=deconv_m + '_corner_pred_offset')
 
             # TODO 需要计算出feat_stride 即在每个f层上一个像素点对应多少的步长
-            self.feed(deconv_m + '_corner_pred_score', 'corner_box','img_info','gt_default_box') \
-                .corner_detect_layer(scales=f_scales[deconv_m],feat_stride=None, name=deconv_m + 'data',
+            self.feed(deconv_m + '_corner_pred_score', 'corner_box', 'img_info', 'gt_default_box') \
+                .corner_detect_layer(scales=f_scales[deconv_m], feat_stride=None, name=deconv_m + 'data',
 
                                      )
 

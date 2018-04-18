@@ -87,11 +87,11 @@ class TrainWrapper(object):
             except:
                 raise 'Check your pretrained {:s}'.format(self._ckpt_path)
 
-        return next_iterater, opt, restore_iter
+        return next_iterater, train_op, restore_iter
 
     def train_model(self, producer=None, sess=None, max_iters=None, restore=False):
 
-        # next_batch, opt, restore_iter = self.setup(sess=sess, producer=producer, restore=restore)
+        # next_batch, train_op, restore_iter = self.setup(sess=sess, producer=producer, restore=restore)
 
         iterator = producer.make_one_shot_iterator()
         next_batch = iterator.get_next()
@@ -106,23 +106,29 @@ class TrainWrapper(object):
             while True:
                 try:
                     timer.tic()
-                    img, corner_data, img_info, reize_info, segmentation_mask = sess.run(next_batch)
+                    img, corner_data, img_info, resize_info, segmentation_mask = sess.run(next_batch)
+
                     print(img.shape)
                     print(corner_data.shape)
                     print(img_info.shape)
-                    print(reize_info.shape)
-                    feed_dict = {
-                        tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img'): img,
-                        tf.placeholder(tf.float32, shape=[None, None, None, 4], name='corner_data'): corner_data,
-                        tf.placeholder(tf.float32, shape=[None, None], name='img_info'): img_info,
-                        tf.placeholder(tf.float32, shape=[None, None], name='reize_info'): reize_info,
-                    }
+                    print(resize_info.shape)
+                    print(segmentation_mask.shape)
+                    # TODO 这个地方有问题
+
+                    print(self.net.img)
+                    # feed_dict = {
+                    #     self.net.img: img,
+                    #     self.net.corner_data: corner_data,
+                    #     self.net.img_info: img_info,
+                    #     self.net.resize_info: resize_info,
+                    #     self.net.segmentation_mask: segmentation_mask,
+                    # }
 
                     print(timer.toc())
                     break
                 except tf.errors.OutOfRangeError:
-                    continue
+                    break
                 except:
                     # print(e)
                     print('get batch error')
-                    continue
+                    break

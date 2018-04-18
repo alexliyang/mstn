@@ -37,11 +37,12 @@ def layer(op):
 
 
 class BaseNetwork(object):
-    def __init__(self, inputs, trainable=True):
-        self.inputs = []  # cache for layer input
-        self.layers = dict(inputs)
+    def __init__(self, inputs=[], trainable=True):
+        # self.inputs = []  # cache for layer input
+        # self.layers = dict(inputs)
         self.trainable = trainable
-        self.setup()  # init
+        # self.setup()  # init
+        # pass
 
     # must be dereived
     def setup(self):
@@ -79,7 +80,7 @@ class BaseNetwork(object):
                     print(layer)
                 except KeyError:
                     print(list(self.layers.keys()))
-                    raise KeyError('Unknown layer name fed: %s' % layer)
+                    raise KeyError('Unknown layer name feed: %s' % layer)
             self.inputs.append(layer)
         return self
 

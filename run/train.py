@@ -12,7 +12,9 @@ from network import get_network
 
 proj_path = os.path.abspath(os.curdir)
 cfg = get_config(proj_path, 'configure.yml')
-pprint.pprint(cfg)
+
+
+# pprint.pprint(cfg)
 
 
 def make_TFconfig():
@@ -26,11 +28,11 @@ def make_TFconfig():
 def train():
     batch_producer = producer(proj_path, cfg)
 
-    # train_net = get_network('train')
+    train_net = get_network('train', cfg)
 
     with tf.Session(config=make_TFconfig()) as sess:
-        # sw = TrainWrapper(proj_path, cfg, train_net)
-        sw = TrainWrapper(proj_path, cfg, )
+        sw = TrainWrapper(proj_path, cfg, train_net)
+        # sw = TrainWrapper(proj_path, cfg, )
         sw.train_model(sess=sess, producer=batch_producer.producer,
                        max_iters=cfg.TRAIN.MAX_ITER, restore=False)
 
