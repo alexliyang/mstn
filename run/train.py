@@ -14,6 +14,7 @@ proj_path = os.path.abspath(os.curdir)
 cfg = get_config(proj_path, 'configure.yml')
 pprint.pprint(cfg)
 
+
 def make_TFconfig():
     TFconfig = tf.ConfigProto(allow_soft_placement=True)
     TFconfig.gpu_options.allocator_type = 'BFC'
@@ -22,7 +23,7 @@ def make_TFconfig():
     return TFconfig
 
 
-if __name__ == '__main__':
+def train():
     batch_producer = producer(proj_path, cfg)
 
     # train_net = get_network('train')
@@ -32,3 +33,7 @@ if __name__ == '__main__':
         sw = TrainWrapper(proj_path, cfg, )
         sw.train_model(sess=sess, producer=batch_producer.producer,
                        max_iters=cfg.TRAIN.MAX_ITER, restore=False)
+
+
+if __name__ == '__main__':
+    train()

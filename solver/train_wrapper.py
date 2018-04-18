@@ -3,9 +3,11 @@ import os
 from lib import get_path
 from lib import Timer
 
+timer = Timer()
+
 
 class TrainWrapper(object):
-    def __init__(self, proj_path, cfg, network = None):
+    def __init__(self, proj_path, cfg, network=None):
         self._cfg = cfg
         self._root_path = proj_path
         self.net = network
@@ -22,37 +24,105 @@ class TrainWrapper(object):
         self._restore = cfg.TRAIN.RESTORE
         self._max_iter = cfg.TRAIN.MAX_ITER
 
+        # store the params
+        # self.saver = tf.train.Saver(max_to_keep=10, write_version=tf.train.SaverDef.V2)
+
+    def get_optimizer(self, lr):
+
+        if self._cfg.TRAIN.SOLVER == 'Adam':
+            opt = tf.train.AdamOptimizer(self._cfg.TRAIN.LEARNING_RATE)
+        elif self._cfg.TRAIN.SOLVER == 'RMS':
+            opt = tf.train.RMSPropOptimizer(self._cfg.TRAIN.LEARNING_RATE)
+        else:
+            # lr = tf.Variable(0.0, trainable=False)
+            momentum = self._cfg.TRAIN.MOMENTUM
+            opt = tf.train.MomentumOptimizer(lr, momentum)
+        return opt
+
     def snapshot(self):
         pass
 
     def build_loss(self):
         pass
 
+    def setup(self, sess=None, producer=None, restore=False):
+        total_loss, model_loss, rpn_cross_entropy, rpn_loss_box = \
+            self.net.build_loss(ohem=self._cfg.TRAIN.OHEM)
+
+        # get the batch iterater
+        iterator = producer.make_one_shot_iterator()
+        next_iterater = iterator.get_next()
+
+        # get the optimizer
+        lr = tf.Variable(self._cfg.TRAIN.LEARNING_RATE, trainable=False)
+        opt = self.get_optimizer(lr)
+
+        global_step = tf.Variable(0, trainable=False)
+
+        # get the train_op
+        tvars = tf.trainable_variables()
+        grads, norm = tf.clip_by_global_norm(tf.gradients(total_loss, tvars), 10.0)
+        train_op = opt.apply_gradients(list(zip(grads, tvars)), global_step=global_step)
+
+        # initiate the varables
+        sess.run(tf.global_variables_initializer())
+
+        try:
+            print(('Loading pretrained model '
+                   'weights from {:s}').format(self._pretrain))
+            self.net.load(self._pretrain, sess, True)
+        except:
+            raise 'Check your pretrained model {:s}'.format(self._pretrain)
+
+        restore_iter = 0
+        if restore:
+            try:
+                ckpt = tf.train.get_checkpoint_state(self._ckpt_path)
+                print('Restoring from {}...'.format(ckpt.model_checkpoint_path), end=' ')
+                self.saver.restore(sess, ckpt.model_checkpoint_path)
+                stem = os.path.splitext(os.path.basename(ckpt.model_checkpoint_path))[0]
+                restore_iter = int(stem.split('_')[-1])
+                sess.run(global_step.assign(restore_iter))
+                print('done')
+            except:
+                raise 'Check your pretrained {:s}'.format(self._ckpt_path)
+
+        return next_iterater, opt, restore_iter
+
     def train_model(self, producer=None, sess=None, max_iters=None, restore=False):
 
+        # next_batch, opt, restore_iter = self.setup(sess=sess, producer=producer, restore=restore)
+
         iterator = producer.make_one_shot_iterator()
-        next_element = iterator.get_next()
+        next_batch = iterator.get_next()
 
-        timer = Timer()
+        # for iter in range(restore_iter, max_iters):
+        for iter in range(1):
+            # learning rate
+            # if iter != 0 and iter % cfg.TRAIN.STEPSIZE == 0:
+            #     sess.run(tf.assign(lr, lr.eval() * cfg.TRAIN.GAMMA))
+            #     print(lr)
 
-        wrong = 0
-        for _ in range(1):
             while True:
                 try:
                     timer.tic()
-                    img, corner_data, img_info, reize_info, segmentation_mask = sess.run(next_element)
-                    # print(img.shape)
-                    # print(corner_data.shape)
-                    # print(img_info)
-                    # print(reize_info)
-                    # print(corner_data)
+                    img, corner_data, img_info, reize_info, segmentation_mask = sess.run(next_batch)
+                    print(img.shape)
+                    print(corner_data.shape)
+                    print(img_info.shape)
+                    print(reize_info.shape)
+                    feed_dict = {
+                        tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img'): img,
+                        tf.placeholder(tf.float32, shape=[None, None, None, 4], name='corner_data'): corner_data,
+                        tf.placeholder(tf.float32, shape=[None, None], name='img_info'): img_info,
+                        tf.placeholder(tf.float32, shape=[None, None], name='reize_info'): reize_info,
+                    }
+
                     print(timer.toc())
                     break
                 except tf.errors.OutOfRangeError:
-                    break
+                    continue
                 except:
                     # print(e)
-                    wrong += 1
                     print('get batch error')
-                    break
-        print(wrong)
+                    continue

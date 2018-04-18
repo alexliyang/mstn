@@ -89,3 +89,6 @@ class mstn_train_net(base):
                                      )
 
         # TODO 取出 f3 f4 f7 f8 f9 做segment sensitive map
+
+    def build_loss(self):
+        pass

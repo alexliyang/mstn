@@ -8,6 +8,8 @@ cfg = get_config(proj_path, 'configure.yml')
 
 
 def corner_py(corner_pred_score, corner_pred_offset, gt_default_box, scales, feat_stride, img_info):
+
+    # TODO 要把输入的tensor 转换一下
     """(num_scales, 4)
        gt_default_box: (4, every corner box number, 4)
                      : 0 left top,
@@ -80,6 +82,7 @@ def corner_py(corner_pred_score, corner_pred_offset, gt_default_box, scales, fea
             np.ascontiguousarray(gt_corner_box, dtype=np.float))
         argmax_overlaps = overlaps.argmax(axis=1)  # 找到和每一个gtbox，overlap最大的那个db
 
+        # valid_label 所有有效像素个数 * 每个像素上的scale个数
         valid_label = np.empty((valid_pixel_num * num_scales,), np.int8)
         valid_label.fill(-1)
 
@@ -98,8 +101,9 @@ def corner_py(corner_pred_score, corner_pred_offset, gt_default_box, scales, fea
         labels[:, :, :, ix, :] = per_kind_corner_label.reshape(height, width, num_scales, 1, 1)
 
         ########################### box target ##################################
-
+        # 对于每个真值是1的default box 需要它有回归目标
         positive_inds = np.where(valid_label == 1)[0]
+
 
 
 
