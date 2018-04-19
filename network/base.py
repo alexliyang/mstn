@@ -168,13 +168,16 @@ class BaseNetwork(object):
                     4: feat stride
                     5: img_info 
             """
-            corner_pred_score, corner_pred_offset = \
+            # TODO 检查一下这里的参数顺序是否正确
+            labels, box_target = \
                 tf.py_func(corner_py, [input[0], input[1],input[3], scales, feat_stride, input[2]],
                            [tf.float32, tf.float32])
 
             # TODO corner label shape w, h , k, q * 2
-            rpn_labels = tf.convert_to_tensor(tf.cast(corner_pred_score, tf.int32),
-                                              name='rpn_labels')  # shape is (1 x H x W x A, 2)
+            corner_labels = tf.convert_to_tensor(tf.cast(labels, tf.int32), name='rpn_labels')
+            corner_box_targets = tf.convert_to_tensor(rpn_bbox_targets, name='corner_box_targets')
+
+
 
 
 
@@ -207,8 +210,8 @@ class BaseNetwork(object):
                trainable=True):
         self.validate_padding(padding)
         c_i = input.get_shape()[-1]
-
-        deconvlve = lambda i, k: tf.nn.conv2d_transpose(i, k, [1, s_h, s_w, 1], padding=padding)
+        # TODO strides 待定
+        deconvlve = lambda i, k: tf.nn.conv2d_transpose(i, k, [1, s_h, s_w, 1],strides=[1,1], padding=padding)
         with tf.variable_scope(name) as scope:
             init_weight = tf.truncated_normal_initializer(0.0, stddev=0.01)
             init_bias = tf.constant_initializer(0.0)
@@ -288,3 +291,29 @@ class BaseNetwork(object):
             smoothL1_sign = tf.cast(tf.less(deltas_abs, 1.0 / sigma2), tf.float32)
             return tf.square(deltas) * 0.5 * sigma2 * smoothL1_sign + \
                    (deltas_abs - 0.5 / sigma2) * tf.abs(smoothL1_sign - 1)
+
+    @layer
+    def softmax(self, input, name):
+        input_shape = tf.shape(input)
+        if name == 'rpn_cls_prob':
+            return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
+                              [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)
+        else:
+            return tf.nn.softmax(input, name=name)
+
+    @layer
+    def spatial_softmax(self, input, name):
+        input_shape = tf.shape(input)
+        # d = input.get_shape()[-1]
+        return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
+                          [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)
+    @layer
+    def  spatial_reshape_layer(self, input, d, name):
+        # d = 2
+        input_shape = tf.shape(input)
+        # transpose: (1, H, W, A x d) -> (1, H, WxA, d)
+        return tf.reshape(input, \
+                          [input_shape[0], \
+                           input_shape[1], \
+                           -1, \
+                           int(d)])

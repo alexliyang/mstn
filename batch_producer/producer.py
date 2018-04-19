@@ -28,6 +28,7 @@ class producer(object):
         dataset = tf.data.Dataset.from_tensor_slices((img_list, gt_list))
         dataset = dataset.map(
             lambda img_path, gt_path: tuple(tf.py_func(
+                # @return img_reized, corner_data, img_info, resize_info, segmentation_mask
                 opencv_handle, [img_path, gt_path], [tf.uint8, tf.int32, tf.int32, tf.float32, tf.int32])),
             num_parallel_calls=100).repeat().batch(
             cfg.TRAIN.BATCH_SIZE)

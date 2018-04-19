@@ -46,7 +46,7 @@ class TrainWrapper(object):
         pass
 
     def setup(self, sess=None, producer=None, restore=False):
-        total_loss, model_loss, rpn_cross_entropy, rpn_loss_box = \
+        loss = (total_loss, model_loss, all_cross_entropy, all_regression_loss) = \
             self.net.build_loss(ohem=self._cfg.TRAIN.OHEM)
 
         # get the batch iterater
@@ -87,11 +87,19 @@ class TrainWrapper(object):
             except:
                 raise 'Check your pretrained {:s}'.format(self._ckpt_path)
 
-        return next_iterater, train_op, restore_iter
+        return next_iterater, train_op, restore_iter, loss, lr
 
-    def train_model(self, producer=None, sess=None, max_iters=None, restore=False):
+    def console_log(self, iter, max_iters, loss, lr):
+        print(
+            'iter: %d / %d, total loss: %.4f, model loss: %.4f, cls_cross_entropy: %.4f, box_regression_loss: %.4f, lr: %f' % \
+            (iter, max_iters, loss[0], loss[1], loss[2],
+             loss[3], lr.eval()))
+        print('speed: {:.3f}s / iter'.format(timer.toc()))
 
-        # next_batch, train_op, restore_iter = self.setup(sess=sess, producer=producer, restore=restore)
+    def train_model(self, cfg=None, producer=None, sess=None, max_iters=None, restore=False):
+
+        next_batch, train_op, restore_iter, loss, lr = self.setup(sess=sess, producer=producer, restore=restore)
+        total_loss, model_loss, all_cross_entropy, all_regression_loss = loss
 
         iterator = producer.make_one_shot_iterator()
         next_batch = iterator.get_next()
@@ -99,13 +107,13 @@ class TrainWrapper(object):
         # for iter in range(restore_iter, max_iters):
         for iter in range(1):
             # learning rate
-            # if iter != 0 and iter % cfg.TRAIN.STEPSIZE == 0:
-            #     sess.run(tf.assign(lr, lr.eval() * cfg.TRAIN.GAMMA))
-            #     print(lr)
+            if iter != 0 and iter % cfg.TRAIN.STEPSIZE == 0:
+                sess.run(tf.assign(lr, lr.eval() * cfg.TRAIN.GAMMA))
 
             while True:
                 try:
                     timer.tic()
+                    # get the batch data
                     img, corner_data, img_info, resize_info, segmentation_mask = sess.run(next_batch)
 
                     print(img.shape)
@@ -113,18 +121,28 @@ class TrainWrapper(object):
                     print(img_info.shape)
                     print(resize_info.shape)
                     print(segmentation_mask.shape)
-                    # TODO 这个地方有问题
 
-                    print(self.net.img)
-                    # feed_dict = {
-                    #     self.net.img: img,
-                    #     self.net.corner_data: corner_data,
-                    #     self.net.img_info: img_info,
-                    #     self.net.resize_info: resize_info,
-                    #     self.net.segmentation_mask: segmentation_mask,
-                    # }
+                    feed_dict = {
+                        self.net.img: img,
+                        self.net.corner_data: corner_data,
+                        self.net.img_info: img_info,
+                        self.net.resize_info: resize_info,
+                        self.net.segmentation_mask: segmentation_mask,
+                    }
 
-                    print(timer.toc())
+                    fetch_list = [total_loss, model_loss, all_cross_entropy, all_regression_loss,
+                                  train_op]
+
+                    loss_val = [total_loss_val, model_loss_val, all_cross_entropy_val, all_regression_loss_val] \
+                        = sess.run(fetches=fetch_list, feed_dict=feed_dict)
+
+                    if (iter) % (cfg.TRAIN.DISPLAY) == 0:
+                        self.console_log(iter, max_iters, loss_val, lr)
+
+                    # if (iter + 1) % cfg.TRAIN.SNAPSHOT_ITERS == 0:
+                    #     last_snapshot_iter = iter
+                    #     self.snapshot(sess, iter)
+
                     break
                 except tf.errors.OutOfRangeError:
                     break

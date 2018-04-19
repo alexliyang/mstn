@@ -8,7 +8,6 @@ cfg = get_config(proj_path, 'configure.yml')
 
 
 def corner_py(corner_pred_score, corner_pred_offset, gt_default_box, scales, feat_stride, img_info):
-
     # TODO 要把输入的tensor 转换一下
     """(num_scales, 4)
        gt_default_box: (4, every corner box number, 4)
@@ -69,17 +68,21 @@ def corner_py(corner_pred_score, corner_pred_offset, gt_default_box, scales, fea
     # gt_default_box shape: (4, gt_text_num, 4) 0 for left_top ...etc
 
     valid_pixel_num = len(idx_indside)
-    # 需要返回的 labels 为 (N H W num_scales q 1), 后面再reshape
+    # 需要返回的 labels 为 (N H W num_scales q=4 1), 后面再reshape
     labels = np.empty((height, width, num_scales, 4, 1))
     # 需要返回的 box_target 为 （N, H, W, num_scales, q, 4) 后面再reshape
     box_target = np.empty((height, width, num_scales, 4, 4))
 
     labels.fill(-1)
+    """
+       gt_default_box shape(4, num_gt_text, 4)
+    """
     for ix, gt_corner_box in enumerate(gt_default_box):
         # overlap 返回的 shape (valid_pixel_num * num_scales, gt_box_num)
         overlaps = bbox_overlaps(
             np.ascontiguousarray(default_boxes, dtype=np.float),
             np.ascontiguousarray(gt_corner_box, dtype=np.float))
+        # argmax_overlap (valid_pixel_num * num_scales, 1)
         argmax_overlaps = overlaps.argmax(axis=1)  # 找到和每一个gtbox，overlap最大的那个db
 
         # valid_label 所有有效像素个数 * 每个像素上的scale个数
@@ -101,14 +104,16 @@ def corner_py(corner_pred_score, corner_pred_offset, gt_default_box, scales, fea
         labels[:, :, :, ix, :] = per_kind_corner_label.reshape(height, width, num_scales, 1, 1)
 
         ########################### box target ##################################
-        # 对于每个真值是1的default box 需要它有回归目标
+        # TODO 对于每个真值是1的default box 需要它有回归目标
         positive_inds = np.where(valid_label == 1)[0]
+        per_kind_corner_target = np.empty((height * width * num_scales, 4), np.int32)
 
+        per_kind_corner_target.fill(0)
 
+        # argmax为每个default box对应iou最大的那个gt的下标，从中选出label是正的
+        per_kind_corner_target[positive_inds, :] = gt_corner_box[argmax_overlaps[positive_inds]]
 
-
-
-
+        box_target[:, :, :, ix, :] = per_kind_corner_target.reshape(height, width, num_scales, 1, 4)
 
     num_fg = int(cfg.TRAIN.POSITIVE_RATIO * cfg.TRAIN.DEFAULT_BOX_NUM)  # 0.25*300
 
@@ -135,3 +140,10 @@ def corner_py(corner_pred_score, corner_pred_offset, gt_default_box, scales, fea
         disable_inds = np.random.choice(
             bg_inds, size=(len(bg_inds) - num_bg), replace=False)
         flat_label[disable_inds] = -1
+
+    """
+     labels (1, height, width, num_scales, 4, 1)
+     box_target (1, height, width, num_scales, 4, 4)
+    """
+    # return flat_label.reshape((1, height, width, num_scales, 4, 1))
+    return labels, box_target
