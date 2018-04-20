@@ -113,6 +113,22 @@ class mstn_train_net(base):
                 .spatial_softmax(name=deconv_m + 'corner_cls_prob')
 
         # TODO 取出 f3 f4 f7 f8 f9 做segment sensitive map
+        # 'f9', 'f8', 'f7', 'f4' 需要缩放到f3的大小
+        # f3 shape (1, h, w, 1024)
+        new_size = self.get_output('f3').get_shape()[1:3]
+
+        layers_for_segment = ['f9', 'f8', 'f7', 'f4', 'f3']
+        for f_layer in layers_for_segment[:-1]:
+            self.feed(f_layer).bilinear_upsample(name=f_layer + '_bilinear')
+        # TODO 以下卷积层的参数待定
+        f_bilinear = [x + '_bilinear' for x in layers_for_segment]
+        (self.feed(*f_bilinear)
+         .layer_n_eltw_sum(name='segment_feature_map')
+         .conv(1, 1, 1024, 1, 1, name='bilinear_conv')
+         .batch_normalize()
+         .relu()
+         # 输出了 (1, h, w, 4)的特征图, 在计算这个分支的时候取出
+         .deconv(2, 2, 4, 1, 1, name='bilinear_deconv'))
 
     def build_loss(self):
         """

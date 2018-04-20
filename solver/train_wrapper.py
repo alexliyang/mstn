@@ -90,8 +90,7 @@ class TrainWrapper(object):
         return next_iterater, train_op, restore_iter, loss, lr
 
     def console_log(self, iter, max_iters, loss, lr):
-        print(
-            'iter: %d / %d, total loss: %.4f, model loss: %.4f, cls_cross_entropy: %.4f, box_regression_loss: %.4f, lr: %f' % \
+        print('iter: %d / %d, total loss: %.4f, model loss: %.4f, cls_cross_entropy: %.4f, box_regression_loss: %.4f, lr: %f' % \
             (iter, max_iters, loss[0], loss[1], loss[2],
              loss[3], lr.eval()))
         print('speed: {:.3f}s / iter'.format(timer.toc()))

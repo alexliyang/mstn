@@ -317,3 +317,11 @@ class BaseNetwork(object):
                            input_shape[1], \
                            -1, \
                            int(d)])
+
+    @layer
+    def bilinear_upsample(self, input, new_size,name):
+        return tf.image.resize_bilinear(input,new_size,align_corners=False,name=name)
+
+    @layer
+    def layer_n_eltw_sum(self, input, name):
+        return tf.add_n(input, name=name)
