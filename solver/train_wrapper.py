@@ -46,7 +46,7 @@ class TrainWrapper(object):
         pass
 
     def setup(self, sess=None, producer=None, restore=False):
-        loss = (total_loss, model_loss, all_cross_entropy, all_regression_loss) = \
+        loss = (total_loss, model_loss, all_cross_entropy, all_regression_loss, dice_loss) = \
             self.net.build_loss(ohem=self._cfg.TRAIN.OHEM)
 
         # get the batch iterater
@@ -90,15 +90,16 @@ class TrainWrapper(object):
         return next_iterater, train_op, restore_iter, loss, lr
 
     def console_log(self, iter, max_iters, loss, lr):
-        print('iter: %d / %d, total loss: %.4f, model loss: %.4f, cls_cross_entropy: %.4f, box_regression_loss: %.4f, lr: %f' % \
+        print(
+            'iter: %d / %d, total loss: %.4f, model loss: %.4f, cls_cross_entropy: %.4f, box_regression_loss: %.4f, lr: %f,dice_loss: %.4f, lr: %f' % \
             (iter, max_iters, loss[0], loss[1], loss[2],
-             loss[3], lr.eval()))
+             loss[3], loss[4], lr.eval()))
         print('speed: {:.3f}s / iter'.format(timer.toc()))
 
     def train_model(self, cfg=None, producer=None, sess=None, max_iters=None, restore=False):
 
         next_batch, train_op, restore_iter, loss, lr = self.setup(sess=sess, producer=producer, restore=restore)
-        total_loss, model_loss, all_cross_entropy, all_regression_loss = loss
+        total_loss, model_loss, all_cross_entropy, all_regression_loss, dice_loss = loss
 
         iterator = producer.make_one_shot_iterator()
         next_batch = iterator.get_next()
@@ -129,10 +130,11 @@ class TrainWrapper(object):
                         self.net.segmentation_mask: segmentation_mask,
                     }
 
-                    fetch_list = [total_loss, model_loss, all_cross_entropy, all_regression_loss,
+                    fetch_list = [total_loss, model_loss, all_cross_entropy, all_regression_loss, dice_loss,
                                   train_op]
 
-                    loss_val = [total_loss_val, model_loss_val, all_cross_entropy_val, all_regression_loss_val] \
+                    loss_val = [total_loss_val, model_loss_val, all_cross_entropy_val, all_regression_loss_val,
+                                dice_loss_val] \
                         = sess.run(fetches=fetch_list, feed_dict=feed_dict)
 
                     if (iter) % (cfg.TRAIN.DISPLAY) == 0:
